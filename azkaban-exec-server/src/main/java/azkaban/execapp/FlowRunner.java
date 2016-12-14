@@ -587,7 +587,6 @@ public class FlowRunner extends EventHandler implements Runnable {
         }
 
         for (ExecutableNode startNode : orderNodesByPriority(startNodes)) {
-          ExecutableNode startNode = flow.getExecutableNode(startNodeId);
           runReadyJob(startNode);
         }
       } else {
