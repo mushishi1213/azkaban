@@ -21,6 +21,7 @@ azkaban.FlowExecuteDialogView = Backbone.View.extend({
   events: {
     "click .closeExecPanel": "hideExecutionOptionPanel",
     "click #schedule-btn": "scheduleClick",
+    "click #schedule-btn-old": "scheduleClickOld",
     "click #execute-btn": "handleExecuteFlow"
   },
 
@@ -240,6 +241,12 @@ azkaban.FlowExecuteDialogView = Backbone.View.extend({
     console.log("click schedule button.");
     this.hideExecutionOptionPanel();
     schedulePanelView.showSchedulePanel();
+  },
+
+  scheduleClickOld: function() {
+    console.log("click schedule old button.");
+    this.hideExecutionOptionPanel();
+    schedulePanelViewOld.showSchedulePanel();
   },
 
   loadFlowInfo: function(projectName, flowId, execId) {

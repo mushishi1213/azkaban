@@ -52,6 +52,7 @@
 
 #set ($current_page="all")
 #set ($show_schedule="false")
+#set ($show_schedule_old="false")
 #parse ("azkaban/webapp/servlet/velocity/nav.vm")
 
 #if ($errorMsg)

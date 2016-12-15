@@ -74,6 +74,7 @@ public abstract class AbstractAzkabanServlet extends HttpServlet {
    * or the new schedulePanel.vm (new UI). We can configure it in conf for this binary change.
    */
   private String schedulePanelPageName;
+  private String schedulePanelPageNameOld;
 
   private List<ViewerPlugin> viewerPlugins;
   private List<TriggerPlugin> triggerPlugins;
@@ -103,6 +104,7 @@ public abstract class AbstractAzkabanServlet extends HttpServlet {
     label = props.getString("azkaban.label", "");
     color = props.getString("azkaban.color", "#FF0000");
     schedulePanelPageName = props.getString("azkaban.schedulePanelPageName", "schedulepanelDeprecated.vm");
+    schedulePanelPageNameOld = "schedulepanelDeprecated.vm";
 
     if (application instanceof AzkabanWebServer) {
       AzkabanWebServer server = (AzkabanWebServer) application;
@@ -335,6 +337,7 @@ public abstract class AbstractAzkabanServlet extends HttpServlet {
     page.add("azkaban_label", label);
     page.add("azkaban_color", color);
     page.add("switchToPanelPage", schedulePanelPageName);
+    page.add("switchToPanelPageOld", schedulePanelPageNameOld);
     page.add("utils", utils);
     page.add("timezone", TimeZone.getDefault().getID());
     page.add("currentTime", (new DateTime()).getMillis());
@@ -386,6 +389,7 @@ public abstract class AbstractAzkabanServlet extends HttpServlet {
     page.add("azkaban_label", label);
     page.add("azkaban_color", color);
     page.add("switchToPanelPage", schedulePanelPageName);
+    page.add("switchToPanelPageOld", schedulePanelPageNameOld);
     page.add("timezone", TimeZone.getDefault().getID());
     page.add("currentTime", (new DateTime()).getMillis());
     page.add("context", req.getContextPath());

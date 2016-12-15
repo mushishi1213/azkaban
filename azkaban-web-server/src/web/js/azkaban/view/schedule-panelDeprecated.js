@@ -16,10 +16,10 @@
 
 $.namespace('azkaban');
 
-var schedulePanelView;
-azkaban.SchedulePanelView = Backbone.View.extend({
+var schedulePanelViewOld;
+azkaban.SchedulePanelViewOld = Backbone.View.extend({
   events: {
-    "click #schedule-button": "scheduleFlow"
+    "click #schedule-button-old": "scheduleFlow"
   },
 
   initialize: function(settings) {
@@ -71,11 +71,11 @@ azkaban.SchedulePanelView = Backbone.View.extend({
 
     var successHandler = function(data) {
       if (data.error) {
-        schedulePanelView.hideSchedulePanel();
+        schedulePanelViewOld.hideSchedulePanel();
         messageDialogView.show("Error Scheduling Flow", data.message);
       }
       else {
-        schedulePanelView.hideSchedulePanel();
+        schedulePanelViewOld.hideSchedulePanel();
         messageDialogView.show("Flow Scheduled", data.message, function() {
           window.location.href = scheduleURL;
         });
@@ -87,7 +87,7 @@ azkaban.SchedulePanelView = Backbone.View.extend({
 });
 
 $(function() {
-  schedulePanelView =  new azkaban.SchedulePanelView({
+  schedulePanelViewOld =  new azkaban.SchedulePanelViewOld({
     el: $('#schedule-modal')
   });
 });

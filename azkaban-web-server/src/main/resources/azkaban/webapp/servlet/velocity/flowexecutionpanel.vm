@@ -186,6 +186,12 @@
               </div>
 #end
 
+#if (!$show_schedule_old || $show_schedule_old == 'true')
+              <div class="pull-left">
+                <button type="button" class="btn btn-success" id="schedule-btn-old">Schedule Deprecated</button>
+              </div>
+#end
+
 #*
 #if ($triggerPlugins.size() > 0)
   #foreach ($triggerPlugin in $triggerPlugins)
@@ -202,6 +208,10 @@
 
 #if (!$show_schedule || $show_schedule == 'true')
   #parse ("azkaban/webapp/servlet/velocity/${switchToPanelPage}")
+#end
+
+#if (!$show_schedule_old || $show_schedule_old == 'true')
+  #parse ("azkaban/webapp/servlet/velocity/${switchToPanelPageOld}")
 #end
 
 #*
