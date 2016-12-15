@@ -17,7 +17,7 @@
       <script type="text/javascript" src="${context}/js/azkaban/util/date.js"></script>
       <script type="text/javascript" src="${context}/js/azkaban/view/schedule-panelDeprecated.js"></script>
 
-      <div class="modal" id="schedule-modal">
+      <div class="modal" id="schedule-modal-old">
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header">
