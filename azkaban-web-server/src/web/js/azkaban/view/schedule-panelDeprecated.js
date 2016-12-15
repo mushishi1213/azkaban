@@ -31,11 +31,11 @@ azkaban.SchedulePanelViewOld = Backbone.View.extend({
   },
 
   showSchedulePanel: function() {
-    $('#schedule-modal').modal();
+    $('#schedule-modal-old').modal();
   },
 
   hideSchedulePanel: function() {
-    $('#schedule-modal').modal("hide");
+    $('#schedule-modal-old').modal("hide");
   },
 
   scheduleFlow: function() {
@@ -88,6 +88,6 @@ azkaban.SchedulePanelViewOld = Backbone.View.extend({
 
 $(function() {
   schedulePanelViewOld =  new azkaban.SchedulePanelViewOld({
-    el: $('#schedule-modal')
+    el: $('#schedule-modal-old')
   });
 });
