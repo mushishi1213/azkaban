@@ -540,8 +540,8 @@ public class FlowRunner extends EventHandler implements Runnable {
       // sort nodes in descending order by CommonJobProperties.PRIORITY
       Collections.sort(prioritizedNodes, new Comparator<ExecutableNode>() {
         public int compare(ExecutableNode firstNode, ExecutableNode secondNode) {
-          int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 0);
-          int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 0);
+          int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
+          int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
           // order by node id if priorities are same
           if (secondJobPriority == firstJobPriority) {
             return firstNode.getNestedId().compareTo(secondNode.getNestedId());
