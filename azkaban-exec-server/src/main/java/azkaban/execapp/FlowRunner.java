@@ -512,11 +512,9 @@ public class FlowRunner extends EventHandler implements Runnable {
   private Collection<ExecutableNode> orderNodesByPriority(Collection<ExecutableNode> nodesToCheck)
       throws IOException {
     Collection<ExecutableNode> orderedNodes = nodesToCheck;
-    logger.info("debug orderNodesByPriority ");
     if (flow.getInputProps() != null &&
         flow.getInputProps().getBoolean(CommonJobProperties.JOB_PRIORITY_ENABLE, false)) {
       orderedNodes = orderNodesByPriorityHelper(orderedNodes);
-      logger.info("debug orderNodesByPriority 2");
     }
     return orderedNodes;
   }
@@ -545,8 +543,6 @@ public class FlowRunner extends EventHandler implements Runnable {
           int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
           int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
 
-          logger.info("debug firstJobPriority : "+firstJobPriority);
-          logger.info("debug secondJobPriority : "+secondJobPriority);
           // order by node id if priorities are same
           if (secondJobPriority == firstJobPriority) {
             return firstNode.getNestedId().compareTo(secondNode.getNestedId());
