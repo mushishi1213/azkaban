@@ -180,9 +180,10 @@
             </div><!-- /modal-body -->
 
             <div class="modal-footer">
-#if (!$show_schedule || $show_schedule == 'true')
+#if (!$show_schedule || $show_schedule == 'true' || !$show_schedule_old || $show_schedule_old == 'true')
               <div class="pull-left">
                 <button type="button" class="btn btn-success" id="schedule-btn">Schedule</button>
+                <button type="button" class="btn btn-success" id="schedule-btn-old">Schedule Deprecated</button>
               </div>
 #end
 
@@ -202,6 +203,10 @@
 
 #if (!$show_schedule || $show_schedule == 'true')
   #parse ("azkaban/webapp/servlet/velocity/schedulepanel.vm")
+#end
+
+#if (!$show_schedule_old || $show_schedule_old == 'true')
+  #parse ("azkaban/webapp/servlet/velocity/${switchToPanelPageOld}")
 #end
 
 #*

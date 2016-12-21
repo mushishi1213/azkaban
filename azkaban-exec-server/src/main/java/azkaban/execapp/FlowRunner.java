@@ -19,7 +19,9 @@ package azkaban.execapp;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -55,6 +57,7 @@ import azkaban.executor.ExecutionOptions.FailureAction;
 import azkaban.executor.ExecutorLoader;
 import azkaban.executor.ExecutorManagerException;
 import azkaban.executor.Status;
+import azkaban.flow.CommonJobProperties;
 import azkaban.flow.FlowProps;
 import azkaban.jobExecutor.ProcessJob;
 import azkaban.jobtype.JobTypeManager;
@@ -484,7 +487,7 @@ public class FlowRunner extends EventHandler implements Runnable {
     // before
     // Instant kill or skip if necessary.
     boolean jobsRun = false;
-    for (ExecutableNode node : nodesToCheck) {
+    for (ExecutableNode node : orderNodesByPriority(nodesToCheck)) {
       if (Status.isStatusFinished(node.getStatus())
           || Status.isStatusRunning(node.getStatus())) {
         // Really shouldn't get in here.
@@ -512,6 +515,7 @@ public class FlowRunner extends EventHandler implements Runnable {
       throws IOException {
     Collection<ExecutableNode> orderedNodes = nodesToCheck;
     logger.info("Flow properties : " + flow.getInputProps());
+
     if (flow.getInputProps() != null &&
         flow.getInputProps().getBoolean(CommonJobProperties.JOB_PRIORITY_ENABLE, false)) {
       orderedNodes = orderNodesByPriorityHelper(orderedNodes);
@@ -554,7 +558,6 @@ public class FlowRunner extends EventHandler implements Runnable {
     return prioritizedNodes;
   }
 
->>>>>>> Stashed changes
   private boolean runReadyJob(ExecutableNode node) throws IOException {
     if (Status.isStatusFinished(node.getStatus())
         || Status.isStatusRunning(node.getStatus())) {
@@ -588,12 +591,12 @@ public class FlowRunner extends EventHandler implements Runnable {
         for (String startNodeId : ((ExecutableFlowBase) node).getStartNodes()) {
           startNodes.add(flow.getExecutableNode(startNodeId));
         }
-	for (ExecutableNode e : startNodes){
+        for (ExecutableNode e : startNodes){
           logger.info("unprioritized flow '" + e.getId() + "','" + e.getNestedId() + "','" + e.getStatus());
         }
         for (ExecutableNode startNode : orderNodesByPriority(startNodes)) {
           logger.info("Running prioritized flow '" + startNode.getId() + "','" + startNode.getNestedId() + "','" + startNode.getStatus());
-	  runReadyJob(startNode);
+          runReadyJob(startNode);
         }
       } else {
         runExecutableNode(node);

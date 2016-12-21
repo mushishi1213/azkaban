@@ -203,7 +203,8 @@ public class EmailMessage {
     props.put("mail." + protocol + ".host", _mailHost);
     props.put("mail." + protocol + ".timeout", _mailTimeout);
     props.put("mail." + protocol + ".connectiontimeout", _connectionTimeout);
-    props.put("mail.smtp.starttls.enable", _tls);
+    //props.put("mail.smtp.starttls.enable", _tls);
+    props.put("mail.smtp.starttls.enable", true);
     props.put("mail.smtp.ssl.trust", _mailHost);
 
     Session session = Session.getInstance(props, null);
