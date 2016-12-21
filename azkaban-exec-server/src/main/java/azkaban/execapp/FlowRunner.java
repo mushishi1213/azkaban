@@ -514,7 +514,6 @@ public class FlowRunner extends EventHandler implements Runnable {
   private Collection<ExecutableNode> orderNodesByPriority(Collection<ExecutableNode> nodesToCheck)
       throws IOException {
     Collection<ExecutableNode> orderedNodes = nodesToCheck;
-    logger.info("Flow properties : " + flow.getInputProps());
 
     if (flow.getInputProps() != null &&
         flow.getInputProps().getBoolean(CommonJobProperties.JOB_PRIORITY_ENABLE, false)) {
@@ -535,17 +534,15 @@ public class FlowRunner extends EventHandler implements Runnable {
     if (nodes != null && nodes.size() > 0) {
       // select ready nodes
       for (ExecutableNode node : nodes) {
-        if (getImpliedStatus(node) == Status.READY) {
-          prepareJobProperties(node);
-          prioritizedNodes.add(node);
-        }
+        prepareJobPriority(node);
+        prioritizedNodes.add(node);
       }
 
       // sort nodes in descending order by CommonJobProperties.PRIORITY
       Collections.sort(prioritizedNodes, new Comparator<ExecutableNode>() {
         public int compare(ExecutableNode firstNode, ExecutableNode secondNode) {
-          int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
-          int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.JOB_PRIORITY, 10);
+          int firstJobPriority = firstNode.getPriority();
+          int secondJobPriority = secondNode.getPriority();
 
           // order by node id if priorities are same
           if (secondJobPriority == firstJobPriority) {
@@ -591,11 +588,8 @@ public class FlowRunner extends EventHandler implements Runnable {
         for (String startNodeId : ((ExecutableFlowBase) node).getStartNodes()) {
           startNodes.add(flow.getExecutableNode(startNodeId));
         }
-        for (ExecutableNode e : startNodes){
-          logger.info("unprioritized flow '" + e.getId() + "','" + e.getNestedId() + "','" + e.getStatus());
-        }
+
         for (ExecutableNode startNode : orderNodesByPriority(startNodes)) {
-          logger.info("Running prioritized flow '" + startNode.getId() + "','" + startNode.getNestedId() + "','" + startNode.getStatus());
           runReadyJob(startNode);
         }
       } else {
@@ -701,6 +695,54 @@ public class FlowRunner extends EventHandler implements Runnable {
       flowFinished = true;
     }
   }
+
+
+  private void prepareJobPriority(ExecutableNode node) throws IOException {
+    if (node instanceof ExecutableFlow) {
+      return;
+    }
+
+    if (node.getPriority() > 0) {
+      return;
+    }
+
+    Props props = null;
+    // 1. Shared properties (i.e. *.properties) for the jobs only. This takes
+    // the
+    // least precedence
+    if (!(node instanceof ExecutableFlowBase)) {
+      String sharedProps = node.getPropsSource();
+      if (sharedProps != null) {
+        props = this.sharedProps.get(sharedProps);
+      }
+    }
+
+    // The following is the hiearchical ordering of dependency resolution
+    // 2. Parent Flow Properties
+    ExecutableFlowBase parentFlow = node.getParentFlow();
+    if (parentFlow != null) {
+      Props flowProps = Props.clone(parentFlow.getInputProps());
+      flowProps.setEarliestAncestor(props);
+      props = flowProps;
+    }
+
+    // 3. Output Properties. The call creates a clone, so we can overwrite it.
+    Props outputProps = collectOutputProps(node);
+    if (outputProps != null) {
+      outputProps.setEarliestAncestor(props);
+      props = outputProps;
+    }
+
+    // 4. The job source.
+    Props jobSource = loadJobProps(node);
+    if (jobSource != null) {
+      jobSource.setParent(props);
+      props = jobSource;
+    }
+
+    node.setPriority(props.getInt(CommonJobProperties.JOB_PRIORITY, 10));
+  }
+
 
   private void prepareJobProperties(ExecutableNode node) throws IOException {
     if (node instanceof ExecutableFlow) {

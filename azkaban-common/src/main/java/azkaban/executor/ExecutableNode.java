@@ -62,6 +62,7 @@ public class ExecutableNode {
 
   private Props inputProps;
   private Props outputProps;
+  private int priority = -1;
 
   public static final String ATTEMPT_PARAM = "attempt";
   public static final String PASTATTEMPTS_PARAM = "pastAttempts";
@@ -206,6 +207,14 @@ public class ExecutableNode {
 
   public Props getOutputProps() {
     return outputProps;
+  }
+
+  public int getPriority() {
+    return priority;
+  }
+
+  public void setPriority(int priority) {
+    this.priority = priority;
   }
 
   public long getDelayedExecution() {
@@ -453,4 +462,5 @@ public class ExecutableNode {
   public long getRetryBackoff() {
     return inputProps.getLong("retry.backoff", 0);
   }
+
 }
