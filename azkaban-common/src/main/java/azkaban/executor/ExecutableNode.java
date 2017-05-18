@@ -459,6 +459,11 @@ public class ExecutableNode {
     return inputProps.getInt("retries", 0);
   }
 
+
+  public String getAlertType() {
+    return inputProps.getString("alertType", "");
+  }
+
   public long getRetryBackoff() {
     return inputProps.getLong("retry.backoff", 0);
   }

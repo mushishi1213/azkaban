@@ -1436,6 +1436,7 @@ public class ExecutorManager extends EventHandler implements
             logger.error(e);
           }
         }
+        //check flow properties
         if (options.getFlowParameters().containsKey("alert.type")) {
           String alertType = options.getFlowParameters().get("alert.type");
           Alerter alerter = alerters.get(alertType);
@@ -1450,7 +1451,21 @@ public class ExecutorManager extends EventHandler implements
           } else {
             logger.error("Alerter type " + alertType + " doesn't exist. Failed to alert.");
           }
-        }
+        //if not set, check common properties
+        } else if (flow.getAlertType() != null && !flow.getAlertType().isEmpty()) {
+          Alerter alerter = alerters.get(flow.getAlertType());
+          if (alerter != null) {
+            try {
+              alerter.alertOnError(flow);
+            } catch (Exception e) {
+              // TODO Auto-generated catch block
+              e.printStackTrace();
+              logger.error("Failed to alert by " + flow.getAlertType());
+            }
+          } else {
+            logger.error("Alerter type " + flow.getAlertType() + " doesn't exist. Failed to alert.");
+          }
+        } 
       } else {
         if (options.getSuccessEmails() != null && !options.getSuccessEmails().isEmpty()) {
           try {
@@ -1474,7 +1489,20 @@ public class ExecutorManager extends EventHandler implements
           } else {
             logger.error("Alerter type " + alertType + " doesn't exist. Failed to alert.");
           }
-        }
+        } else if (flow.getAlertType() != null && !flow.getAlertType().isEmpty()) {
+          Alerter alerter = alerters.get(flow.getAlertType());
+          if (alerter != null) {
+            try {
+              alerter.alertOnError(flow);
+            } catch (Exception e) {
+              // TODO Auto-generated catch block
+              e.printStackTrace();
+              logger.error("Failed to alert by " + flow.getAlertType());
+            }
+          } else {
+            logger.error("Alerter type " + flow.getAlertType() + " doesn't exist. Failed to alert.");
+          }
+        } 
       }
     }
 
