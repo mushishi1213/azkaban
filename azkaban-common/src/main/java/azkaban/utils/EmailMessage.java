@@ -58,6 +58,7 @@ public class EmailMessage {
   private boolean _enableAttachementEmbedment = true;
   private StringBuffer _body = new StringBuffer();
   private static int _mailTimeout = 10000;
+  private int _mailPort = 587;
   private static int _connectionTimeout = 10000;
   private static long _totalAttachmentMaxSizeInByte = 1024 * 1024 * 1024; // 1
                                                                           // GB
@@ -201,6 +202,7 @@ public class EmailMessage {
       props.put("mail." + protocol + ".auth", "false");
     }
     props.put("mail." + protocol + ".host", _mailHost);
+    props.put("mail." + protocol + ".port", _mailPort);
     props.put("mail." + protocol + ".timeout", _mailTimeout);
     props.put("mail." + protocol + ".connectiontimeout", _connectionTimeout);
     //props.put("mail.smtp.starttls.enable", _tls);
@@ -263,7 +265,7 @@ public class EmailMessage {
 
   private void connectToSMTPServer(SMTPTransport t) throws MessagingException {
     if (_usesAuth) {
-      t.connect(_mailHost, _mailUser, _mailPassword);
+      t.connect(_mailHost, _mailPort, _mailUser, _mailPassword);
     } else {
       t.connect();
     }
