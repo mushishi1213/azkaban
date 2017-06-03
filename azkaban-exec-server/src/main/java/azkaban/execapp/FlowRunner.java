@@ -38,8 +38,8 @@ import azkaban.project.ProjectManagerException;
 import azkaban.utils.Props;
 import azkaban.utils.PropsUtils;
 import azkaban.utils.SwapQueue;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Queues;
 import org.apache.log4j.*;
 
 import java.io.File;
@@ -50,8 +50,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
-import static azkaban.flow.CommonJobProperties.FLOW_PRIORITY_ENABLE;
-import static azkaban.flow.CommonJobProperties.FLOW_SCHEDULE_PRIORITY;
+import static azkaban.flow.CommonJobProperties.INTERNAL_FLOW_MAX_NUMBER;
+import static azkaban.flow.CommonJobProperties.INTERNAL_FLOW_PRIORITY_ENABLE;
+import static azkaban.flow.CommonJobProperties.INTERNAL_FLOW_PRIORITY;
 
 /**
  * Class that handles the running of a ExecutableFlow DAG
@@ -358,17 +359,36 @@ public class FlowRunner extends EventHandler implements Runnable {
   private void runFlow() throws Exception {
     logger.info("Starting flows");
     // Detect the flow properties, if it is scheduled by flows, then order the sub flows with the priority.
-    if (this.flow.getInputProps().getBoolean(FLOW_PRIORITY_ENABLE, false)) {
+    ExecutionOptions options = this.flow.getExecutionOptions();
+    if (Boolean.valueOf(options.getFlowParameters().getOrDefault(INTERNAL_FLOW_PRIORITY_ENABLE, "False"))) {
+      logger.info("Enable internal flows schedule mode.");
       this.flow.setStatus(Status.RUNNING);
       this.flow.setStartTime(System.currentTimeMillis());
       prepareJobProperties(this.flow);
       updateFlow();
       List<ExecutableNode> inNodes = getPrioritizedInNodes();
+      int maxFlowNum = Integer.valueOf(options.getFlowParameters().getOrDefault(INTERNAL_FLOW_MAX_NUMBER, "10"));
+      logger.info(String.format("The max internal flow number is %d.", maxFlowNum));
+      List<ExecutableNode> runningNodes = Lists.newLinkedList();
+      int runNodeIndex = -1;
+      while (!flowFinished) {
+        runNodeIndex = addNodesToRun(inNodes, runningNodes, runNodeIndex, maxFlowNum);
+        for (ExecutableNode runningNode : runningNodes) {
+          runReadyJob(runningNode);
+        }
+        loopProcessFlow();
+        for (ExecutableNode runningNode : runningNodes) {
+          if (Status.isStatusFinished(runningNode.getStatus())) {
+            runningNodes.remove(runningNode);
+          }
+        }
+      }
+
     } else {
       runReadyJob(this.flow);
       updateFlow();
       while (!flowFinished) {
-        waitFlowFinish();
+        loopProcessFlow();
       }
     }
 
@@ -379,7 +399,22 @@ public class FlowRunner extends EventHandler implements Runnable {
     logger.info("Finished Flow");
   }
 
-  private void waitFlowFinish() throws IOException {
+  private int addNodesToRun(List<ExecutableNode> readyNodes, List<ExecutableNode> runNodes, int index, int maxNodes) {
+    if (runNodes.size() >= maxNodes) {
+      return index;
+    }
+    if (index >= readyNodes.size()) {
+      return index;
+    }
+    int emptyNodesNum = maxNodes - runNodes.size();
+    int newIndex = index + emptyNodesNum >= readyNodes.size() ? readyNodes.size() : index + emptyNodesNum;
+    for (int i = index + 1; i < newIndex; i++) {
+      runNodes.add(readyNodes.get(i));
+    }
+    return newIndex;
+  }
+
+  private void loopProcessFlow() throws IOException {
     synchronized (mainSyncObj) {
       if (flowPaused) {
         try {
@@ -407,12 +442,12 @@ public class FlowRunner extends EventHandler implements Runnable {
       ExecutableNode node = flow.getExecutableNode(nodeId);
       prepareJobProperties(node);
       nodes.add(node);
-      node.getInputProps().getInt(FLOW_SCHEDULE_PRIORITY, 0);
+      node.getInputProps().getInt(INTERNAL_FLOW_PRIORITY, 0);
     }
     Collections.sort(nodes, new Comparator<ExecutableNode>() {
       public int compare(ExecutableNode firstNode, ExecutableNode secondNode) {
-        int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.FLOW_SCHEDULE_PRIORITY, 10);
-        int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.FLOW_SCHEDULE_PRIORITY, 10);
+        int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.INTERNAL_FLOW_PRIORITY, 10);
+        int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.INTERNAL_FLOW_PRIORITY, 10);
 
         // order by node id if priorities are same
         if (secondJobPriority == firstJobPriority) {
@@ -429,7 +464,7 @@ public class FlowRunner extends EventHandler implements Runnable {
       runReadyJob(flow);
     }
     while (!checkFlowsFinished(flows)) {
-      waitFlowFinish();
+      loopProcessFlow();
     }
   }
 

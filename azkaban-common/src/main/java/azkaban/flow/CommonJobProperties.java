@@ -45,7 +45,7 @@ public class CommonJobProperties {
   /**
    * Integer value to prioritize flows. Lower value means higher priority
    */
-  public static final String FLOW_SCHEDULE_PRIORITY = "flow.priority";
+  public static final String INTERNAL_FLOW_PRIORITY = "internal.flow.priority";
 
   /**
    * The number of retries when this job has failed.
@@ -110,7 +110,12 @@ public class CommonJobProperties {
   /**
    * Boolean to enable disable use of flow priority property
    */
-  public static final String FLOW_PRIORITY_ENABLE = "flow.priority.enable";
+  public static final String INTERNAL_FLOW_PRIORITY_ENABLE = "internal.flow.priority.enable";
+
+  /**
+   * Boolean to enable disable use of flow priority property
+   */
+  public static final String INTERNAL_FLOW_MAX_NUMBER = "internal.flow.max.number";
 
   /**
    * The nested flow id path
