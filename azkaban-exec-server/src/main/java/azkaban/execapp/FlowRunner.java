@@ -459,26 +459,6 @@ public class FlowRunner extends EventHandler implements Runnable {
     return nodes;
   }
 
-  private void runSubFlows(List<ExecutableFlow> flows) throws IOException {
-    for (ExecutableFlow flow : flows) {
-      runReadyJob(flow);
-    }
-    while (!checkFlowsFinished(flows)) {
-      loopProcessFlow();
-    }
-  }
-
-  private boolean checkFlowsFinished(List<ExecutableFlow> flows) {
-    boolean isAllFlowFinished = true;
-    for (ExecutableFlow flow : flows) {
-      if (!flow.isFlowFinished()) {
-        isAllFlowFinished = false;
-        break;
-      }
-    }
-    return isAllFlowFinished;
-  }
-
   private void retryAllFailures() throws IOException {
     logger.info("Restarting all failed jobs");
 
