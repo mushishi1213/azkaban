@@ -16,29 +16,6 @@
 
 package azkaban.execapp;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-
-import org.apache.log4j.Appender;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Layout;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-
 import azkaban.event.Event;
 import azkaban.event.Event.Type;
 import azkaban.event.EventData;
@@ -49,14 +26,8 @@ import azkaban.execapp.event.JobCallbackManager;
 import azkaban.execapp.jmx.JmxJobMBeanManager;
 import azkaban.execapp.metric.NumFailedJobMetric;
 import azkaban.execapp.metric.NumRunningJobMetric;
-import azkaban.executor.ExecutableFlow;
-import azkaban.executor.ExecutableFlowBase;
-import azkaban.executor.ExecutableNode;
-import azkaban.executor.ExecutionOptions;
+import azkaban.executor.*;
 import azkaban.executor.ExecutionOptions.FailureAction;
-import azkaban.executor.ExecutorLoader;
-import azkaban.executor.ExecutorManagerException;
-import azkaban.executor.Status;
 import azkaban.flow.CommonJobProperties;
 import azkaban.flow.FlowProps;
 import azkaban.jobExecutor.ProcessJob;
@@ -67,6 +38,20 @@ import azkaban.project.ProjectManagerException;
 import azkaban.utils.Props;
 import azkaban.utils.PropsUtils;
 import azkaban.utils.SwapQueue;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Lists;
+import org.apache.log4j.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+
+import static azkaban.flow.CommonJobProperties.FLOW_PRIORITY_ENABLE;
+import static azkaban.flow.CommonJobProperties.FLOW_SCHEDULE_PRIORITY;
 
 /**
  * Class that handles the running of a ExecutableFlow DAG
@@ -372,28 +357,18 @@ public class FlowRunner extends EventHandler implements Runnable {
    */
   private void runFlow() throws Exception {
     logger.info("Starting flows");
-    runReadyJob(this.flow);
-    updateFlow();
-
-    while (!flowFinished) {
-      synchronized (mainSyncObj) {
-        if (flowPaused) {
-          try {
-            mainSyncObj.wait(CHECK_WAIT_MS);
-          } catch (InterruptedException e) {
-          }
-
-          continue;
-        } else {
-          if (retryFailedJobs) {
-            retryAllFailures();
-          } else if (!progressGraph()) {
-            try {
-              mainSyncObj.wait(CHECK_WAIT_MS);
-            } catch (InterruptedException e) {
-            }
-          }
-        }
+    // Detect the flow properties, if it is scheduled by flows, then order the sub flows with the priority.
+    if (this.flow.getInputProps().getBoolean(FLOW_PRIORITY_ENABLE, false)) {
+      this.flow.setStatus(Status.RUNNING);
+      this.flow.setStartTime(System.currentTimeMillis());
+      prepareJobProperties(this.flow);
+      updateFlow();
+      List<ExecutableNode> inNodes = getPrioritizedInNodes();
+    } else {
+      runReadyJob(this.flow);
+      updateFlow();
+      while (!flowFinished) {
+        waitFlowFinish();
       }
     }
 
@@ -402,6 +377,71 @@ public class FlowRunner extends EventHandler implements Runnable {
 
     updateFlow();
     logger.info("Finished Flow");
+  }
+
+  private void waitFlowFinish() throws IOException {
+    synchronized (mainSyncObj) {
+      if (flowPaused) {
+        try {
+          mainSyncObj.wait(CHECK_WAIT_MS);
+        } catch (InterruptedException e) {
+        }
+
+        return;
+      } else {
+        if (retryFailedJobs) {
+          retryAllFailures();
+        } else if (!progressGraph()) {
+          try {
+            mainSyncObj.wait(CHECK_WAIT_MS);
+          } catch (InterruptedException e) {
+          }
+        }
+      }
+    }
+  }
+
+  private List<ExecutableNode> getPrioritizedInNodes() throws IOException {
+    List<ExecutableNode> nodes = Lists.newArrayList();
+    for (String nodeId : this.flow.getInNodes()) {
+      ExecutableNode node = flow.getExecutableNode(nodeId);
+      prepareJobProperties(node);
+      nodes.add(node);
+      node.getInputProps().getInt(FLOW_SCHEDULE_PRIORITY, 0);
+    }
+    Collections.sort(nodes, new Comparator<ExecutableNode>() {
+      public int compare(ExecutableNode firstNode, ExecutableNode secondNode) {
+        int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.FLOW_SCHEDULE_PRIORITY, 10);
+        int secondJobPriority = secondNode.getInputProps().getInt(CommonJobProperties.FLOW_SCHEDULE_PRIORITY, 10);
+
+        // order by node id if priorities are same
+        if (secondJobPriority == firstJobPriority) {
+          return firstNode.getNestedId().compareTo(secondNode.getNestedId());
+        }
+        return (secondJobPriority - firstJobPriority);
+      }
+    });
+    return nodes;
+  }
+
+  private void runSubFlows(List<ExecutableFlow> flows) throws IOException {
+    for (ExecutableFlow flow : flows) {
+      runReadyJob(flow);
+    }
+    while (!checkFlowsFinished(flows)) {
+      waitFlowFinish();
+    }
+  }
+
+  private boolean checkFlowsFinished(List<ExecutableFlow> flows) {
+    boolean isAllFlowFinished = true;
+    for (ExecutableFlow flow : flows) {
+      if (!flow.isFlowFinished()) {
+        isAllFlowFinished = false;
+        break;
+      }
+    }
+    return isAllFlowFinished;
   }
 
   private void retryAllFailures() throws IOException {

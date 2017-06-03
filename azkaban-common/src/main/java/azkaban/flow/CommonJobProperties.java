@@ -38,9 +38,14 @@ public class CommonJobProperties {
   public static final String DEPENDENCIES = "dependencies";
 
   /**
-   * Integer value to prioritize ready jobs. Higher value means higher priority
+   * Integer value to prioritize ready jobs. Lower value means higher priority
    */
   public static final String JOB_PRIORITY = "job.priority";
+
+  /**
+   * Integer value to prioritize flows. Lower value means higher priority
+   */
+  public static final String FLOW_SCHEDULE_PRIORITY = "flow.priority";
 
   /**
    * The number of retries when this job has failed.
@@ -101,6 +106,11 @@ public class CommonJobProperties {
    * Boolean to enable disable use of job priority property
    */
   public static final String JOB_PRIORITY_ENABLE = "job.priority.enable";
+
+  /**
+   * Boolean to enable disable use of flow priority property
+   */
+  public static final String FLOW_PRIORITY_ENABLE = "flow.priority.enable";
 
   /**
    * The nested flow id path
