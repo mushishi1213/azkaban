@@ -39,7 +39,6 @@ import azkaban.utils.Props;
 import azkaban.utils.PropsUtils;
 import azkaban.utils.SwapQueue;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Queues;
 import org.apache.log4j.*;
 
 import java.io.File;
@@ -360,27 +359,33 @@ public class FlowRunner extends EventHandler implements Runnable {
     logger.info("Starting flows");
     // Detect the flow properties, if it is scheduled by flows, then order the sub flows with the priority.
     ExecutionOptions options = this.flow.getExecutionOptions();
+    logger.info(String.format("Flow params is %s", options.getFlowParameters()));
     if (Boolean.valueOf(options.getFlowParameters().getOrDefault(INTERNAL_FLOW_PRIORITY_ENABLE, "False"))) {
       logger.info("Enable internal flows schedule mode.");
       this.flow.setStatus(Status.RUNNING);
       this.flow.setStartTime(System.currentTimeMillis());
       prepareJobProperties(this.flow);
       updateFlow();
-      List<ExecutableNode> inNodes = getPrioritizedInNodes();
+      List<ExecutableNode> prioritizedNodes = getPrioritizedSubFlows();
       int maxFlowNum = Integer.valueOf(options.getFlowParameters().getOrDefault(INTERNAL_FLOW_MAX_NUMBER, "10"));
       logger.info(String.format("The max internal flow number is %d.", maxFlowNum));
       List<ExecutableNode> runningNodes = Lists.newLinkedList();
       int runNodeIndex = -1;
       while (!flowFinished) {
-        runNodeIndex = addNodesToRun(inNodes, runningNodes, runNodeIndex, maxFlowNum);
+        runNodeIndex = addNodesToRun(prioritizedNodes, runningNodes, runNodeIndex, maxFlowNum);
+        logger.info(String.format("runNodeIndex is %d, the number of running nodes is %d.",
+                runNodeIndex, runningNodes.size()));
         for (ExecutableNode runningNode : runningNodes) {
-          runReadyJob(runningNode);
+          runPriorityFlow(runningNode);
         }
         loopProcessFlow();
         for (ExecutableNode runningNode : runningNodes) {
           if (Status.isStatusFinished(runningNode.getStatus())) {
             runningNodes.remove(runningNode);
           }
+        }
+        if (runningNodes.size() == 0 && runNodeIndex == prioritizedNodes.size() -1) {
+          runReadyJob(this.flow);
         }
       }
 
@@ -399,16 +404,32 @@ public class FlowRunner extends EventHandler implements Runnable {
     logger.info("Finished Flow");
   }
 
+  private boolean runPriorityFlow(ExecutableNode node) throws IOException {
+    logger.info("Start to runPriorityFlow '" + node.getId() + "'.");
+    Set<String> inNodes = node.getInNodes();
+    if (inNodes.isEmpty()) {
+      runReadyJob(node);
+      return true;
+    }
+    ExecutableFlowBase parentFlow = node.getParentFlow();
+    for (String inNodeId : inNodes) {
+      ExecutableNode inNode = parentFlow.getExecutableNode(inNodeId);
+      runPriorityFlow(inNode);
+    }
+    runReadyJob(node);
+    return true;
+  }
+
   private int addNodesToRun(List<ExecutableNode> readyNodes, List<ExecutableNode> runNodes, int index, int maxNodes) {
     if (runNodes.size() >= maxNodes) {
       return index;
     }
-    if (index >= readyNodes.size()) {
+    if (index >= readyNodes.size() - 1) {
       return index;
     }
     int emptyNodesNum = maxNodes - runNodes.size();
-    int newIndex = index + emptyNodesNum >= readyNodes.size() ? readyNodes.size() : index + emptyNodesNum;
-    for (int i = index + 1; i < newIndex; i++) {
+    int newIndex = index + emptyNodesNum >= readyNodes.size() - 1 ? readyNodes.size() - 1 : index + emptyNodesNum;
+    for (int i = index + 1; i <= newIndex; i++) {
       runNodes.add(readyNodes.get(i));
     }
     return newIndex;
@@ -436,14 +457,18 @@ public class FlowRunner extends EventHandler implements Runnable {
     }
   }
 
-  private List<ExecutableNode> getPrioritizedInNodes() throws IOException {
+  private List<ExecutableNode> getPrioritizedSubFlows() throws IOException {
     List<ExecutableNode> nodes = Lists.newArrayList();
-    for (String nodeId : this.flow.getInNodes()) {
-      ExecutableNode node = flow.getExecutableNode(nodeId);
-      prepareJobProperties(node);
-      nodes.add(node);
-      node.getInputProps().getInt(INTERNAL_FLOW_PRIORITY, 0);
+    for (String endNodeId : this.flow.getEndNodes()) {
+      ExecutableNode endNode = flow.getExecutableNode(endNodeId);
+      for (String nodeId : endNode.getInNodes()) {
+        ExecutableNode node = flow.getExecutableNode(nodeId);
+        prepareJobProperties(node);
+        nodes.add(node);
+        node.getInputProps().getInt(INTERNAL_FLOW_PRIORITY, 0);
+      }
     }
+
     Collections.sort(nodes, new Comparator<ExecutableNode>() {
       public int compare(ExecutableNode firstNode, ExecutableNode secondNode) {
         int firstJobPriority = firstNode.getInputProps().getInt(CommonJobProperties.INTERNAL_FLOW_PRIORITY, 10);
@@ -456,6 +481,7 @@ public class FlowRunner extends EventHandler implements Runnable {
         return (secondJobPriority - firstJobPriority);
       }
     });
+    logger.info(String.format("PrioritizedInNodes size is %d, the nodes is %s", nodes.size(), String.valueOf(nodes)));
     return nodes;
   }
 
@@ -651,6 +677,7 @@ public class FlowRunner extends EventHandler implements Runnable {
     }
     return true;
   }
+
 
   private boolean retryJobIfPossible(ExecutableNode node) {
     if (node instanceof ExecutableFlowBase) {
