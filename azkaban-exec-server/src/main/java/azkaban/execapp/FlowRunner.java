@@ -380,9 +380,11 @@ public class FlowRunner extends EventHandler implements Runnable {
           runPriorityFlow(runningNode);
         }
         loopProcessFlow();
-        for (ExecutableNode runningNode : runningNodes) {
+        Iterator<ExecutableNode> it = runningNodes.iterator();
+        while (it.hasNext()) {
+          ExecutableNode runningNode = it.next();
           if (Status.isStatusFinished(runningNode.getStatus())) {
-            runningNodes.remove(runningNode);
+              it.remove();
           }
         }
         if (runningNodes.size() == 0 && runNodeIndex == prioritizedNodes.size() -1) {
@@ -427,10 +429,17 @@ public class FlowRunner extends EventHandler implements Runnable {
     if (index >= readyNodes.size() - 1) {
       return index;
     }
-    int emptyNodesNum = maxNodes - runNodes.size();
-    int newIndex = index + emptyNodesNum >= readyNodes.size() - 1 ? readyNodes.size() - 1 : index + emptyNodesNum;
-    for (int i = index + 1; i <= newIndex; i++) {
-      runNodes.add(readyNodes.get(i));
+    int newIndex = index;
+    int newNodeNum = 0;
+    for (int i = index + 1; i < readyNodes.size(); i++) {
+      if (newNodeNum >= maxNodes) {
+        break;
+      }
+      ExecutableNode newNode = readyNodes.get(i);
+      if (!Status.isStatusFinished(newNode.getStatus())) {
+        runNodes.add(newNode);
+      }
+      newIndex = i;
     }
     return newIndex;
   }
