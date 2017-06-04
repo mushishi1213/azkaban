@@ -376,6 +376,7 @@ public class FlowRunner extends EventHandler implements Runnable {
         logger.info(String.format("runNodeIndex is %d, the number of running nodes is %d.",
                 runNodeIndex, runningNodes.size()));
         for (ExecutableNode runningNode : runningNodes) {
+          logger.info("Start to runPriorityFlow '" + runningNode.getId() + "'.");
           runPriorityFlow(runningNode);
         }
         loopProcessFlow();
@@ -405,7 +406,6 @@ public class FlowRunner extends EventHandler implements Runnable {
   }
 
   private boolean runPriorityFlow(ExecutableNode node) throws IOException {
-    logger.info("Start to runPriorityFlow '" + node.getId() + "'.");
     Set<String> inNodes = node.getInNodes();
     if (inNodes.isEmpty()) {
       runReadyJob(node);
@@ -481,8 +481,16 @@ public class FlowRunner extends EventHandler implements Runnable {
         return (secondJobPriority - firstJobPriority);
       }
     });
-    logger.info(String.format("PrioritizedInNodes size is %d, the nodes is %s", nodes.size(), String.valueOf(nodes)));
+    logger.info(String.format("PrioritizedInNodes size is %d, the nodes is %s", nodes.size(), getNodesId(nodes)));
     return nodes;
+  }
+
+  private List<String> getNodesId(List<ExecutableNode> nodes) {
+    List<String> nodeIds = Lists.newArrayList();
+    for (ExecutableNode node : nodes) {
+      nodeIds.add(node.getId());
+    }
+    return nodeIds;
   }
 
   private void retryAllFailures() throws IOException {
